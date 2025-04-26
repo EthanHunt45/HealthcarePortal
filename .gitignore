@@ -1,0 +1,120 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+.env/
+ENV/
+env/
+.venv/
+venv.bak/
+venv.local/
+
+# pytest
+.cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# macOS metadata
+.DS_Store
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+
+# Flask-specific files
+instance/
+*.pyc
+
+# Static assets cache
+*.cache/
+*.tmp/
+
+# IDEs and editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test coverage
+.coverage
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# MyPy
+.mypy_cache/
+
+# Profiling
+.prof
+
+# Secrets and environment files
+.env
+.env.*
+secrets.json
+config.py
+
+# Gunicorn logs
+gunicorn-access.log
+gunicorn-error.log
+
+# Frontend-specific files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.lock
+
+# Frontend build files
+.eslintcache
+.stylelintcache
+
+# Temporary files for React/Vue/etc.
+*.tmp
+*.cache
+
+# Testing tools (frontend)
+coverage/
+.nyc_output/
+
+# Storybook
+storybook-static/
+
+# Dependency directories for frontend tools
+.bower_components/
+.jspm_packages/
+
+# IDE frontend settings
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# Parcel, Webpack, Vite, or other frontend bundlers
+.terser-cache/
+.parcel-cache/

@@ -1,0 +1,6 @@
+Python 3.12 will be better to use for all libraries.
+
+pandas
+matplotlib
+torch
+torchvision
