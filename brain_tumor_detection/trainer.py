@@ -1,17 +1,16 @@
-import ssl
 import copy
+import ssl
 import pandas as pd
 import matplotlib.pyplot as plt
-
-# SSL bypass for macOS cert issues
-ssl._create_default_https_context = ssl._create_unverified_context
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, models, transforms
+
+# SSL bypass for macOS cert issues
+# ssl._create_default_https_context = ssl._create_unverified_context
 
 # === Configuration ===
 dataset_dir = "./brain_tumor_dataset"
@@ -21,7 +20,7 @@ validation_split = 0.2
 seed = 123
 num_epochs = 30
 learning_rate = 1e-3
-num_workers = 4  # Adjust based on your CPU
+num_workers = 8  # Adjust based on your CPU
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
