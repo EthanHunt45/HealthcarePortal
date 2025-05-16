@@ -21,6 +21,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("CUDA available:", torch.cuda.is_available())
 print("Using device:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")
+
 # ---------------------
 # Configuration
 # ---------------------
@@ -32,6 +33,7 @@ VAL_SPLIT = 0.2
 EPOCHS = 30
 LR = 1e-3
 SEED = 42
+PATIENCE = 5
 
 torch.manual_seed(SEED)
 
@@ -103,16 +105,21 @@ def prepare_data_loaders():
 class SimpleCNN(nn.Module):
     def __init__(self):
         super().__init__()
-        self.net = nn.Sequential(
+        self.features = nn.Sequential(
             nn.Conv2d(3, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
-            nn.Conv2d(32, 64, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2)
+        )
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(64 * (IMG_SIZE // 4) * (IMG_SIZE // 4), 64), nn.ReLU(),
+            nn.Linear(64, 64), nn.ReLU(),
             nn.Linear(64, 1)
         )
 
     def forward(self, x):
-        return self.net(x)
+        x = self.features(x)
+        x = self.pool(x)
+        return self.classifier(x)
 
 model_builders = {
     "simple_cnn": lambda: SimpleCNN(),
@@ -130,26 +137,30 @@ model_builders = {
 }
 
 loss_functions = {
-    "BCEWithLogits": nn.BCEWithLogitsLoss()
+    'BCE': nn.BCEWithLogitsLoss(),
+    'MSE': nn.MSELoss()
 }
 
 optimizer_builders = {
-    "Adam": lambda params: optim.Adam(params, lr=LR)
+    'Adam': lambda params: optim.Adam(params, lr=LR),
+    'SGD': lambda params: optim.SGD(params, lr=LR, momentum=0.9)
 }
 
 scheduler_builders = {
-    "None": None,
-    "StepLR": lambda opt: StepLR(opt, step_size=10, gamma=0.1)
+    'None': None,
+    'ReduceLROnPlateau': lambda opt: ReduceLROnPlateau(opt, mode='min', factor=0.2, patience=3),
+    'StepLR': lambda opt: StepLR(opt, step_size=7, gamma=0.1)
 }
 
 # ---------------------
 # Training
 # ---------------------
-def train_model(model, loaders, sizes, criterion, optimizer, scheduler, epochs):
+def train_model(model, loaders, sizes, criterion, optimizer, scheduler, epochs, patience=5):
     model.to(device)
     best_model = copy.deepcopy(model.state_dict())
     best_acc = 0.0
     history = {"train_acc": [], "val_acc": []}
+    no_improve_epochs = 0
 
     for epoch in range(epochs):
         print(f"\nEpoch {epoch + 1}/{epochs}")
@@ -176,12 +187,24 @@ def train_model(model, loaders, sizes, criterion, optimizer, scheduler, epochs):
             history[f"{phase}_acc"].append(epoch_acc.item())
             print(f"{phase} Loss: {epoch_loss:.4f}, Acc: {epoch_acc:.4f}")
 
-            if phase == "val" and epoch_acc > best_acc:
-                best_acc = epoch_acc
-                best_model = copy.deepcopy(model.state_dict())
+            if phase == "val":
+                if epoch_acc > best_acc:
+                    best_acc = epoch_acc
+                    best_model = copy.deepcopy(model.state_dict())
+                    no_improve_epochs = 0
+                else:
+                    no_improve_epochs += 1
+                    print(f"No improvement for {no_improve_epochs} epoch(s)")
 
-            if phase == "val" and scheduler:
-                scheduler.step(epoch_loss)
+                if scheduler:
+                    if isinstance(scheduler, ReduceLROnPlateau):
+                        scheduler.step(epoch_loss)
+                    else:
+                        scheduler.step()
+
+        if no_improve_epochs >= patience:
+            print(f"Early stopping at epoch {epoch + 1}")
+            break
 
     model.load_state_dict(best_model)
     return model, history, best_acc
@@ -207,11 +230,12 @@ def main():
                 optimizer = opt_fn(filter(lambda p: p.requires_grad, model.parameters()))
                 for sched_name, sched_fn in scheduler_builders.items():
                     scheduler = sched_fn(optimizer) if sched_fn else None
-                    tag = f"{model_name}_{loss_name}_{opt_name}_{sched_name}"
+                    tag = f"{model_name}_{loss_name}_{opt_name}_{sched_name}".replace("None", "none")
                     print(f"\n▶ Experiment: {tag}")
-                    model, hist, best_acc = train_model(model, loaders, sizes, loss_fn, optimizer, scheduler, EPOCHS)
+                    model, hist, best_acc = train_model(
+                        model, loaders, sizes, loss_fn, optimizer, scheduler, EPOCHS, patience=PATIENCE
+                    )
 
-                    # Save best model
                     torch.save(model.state_dict(), f"saved_models/{tag}.pth")
 
                     results.append({
